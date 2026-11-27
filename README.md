@@ -6,26 +6,26 @@ wydrukować, wysłać e-mailem albo udostępnić w dowolnej aplikacji.
 
 ## Funkcje
 
-- **Skanowanie aparatem**: skaner Google ML Kit z automatycznym wykrywaniem krawędzi kartki,
-  prostowaniem perspektywy, ręcznym kadrowaniem i obracaniem, usuwaniem palców i plam.
-  Można zeskanować wiele stron naraz (do 50) albo zaimportować zdjęcia z galerii.
-- **Poprawa wyglądu** (własny algorytm, `EnhancerCore.kt`), z podglądem przed zapisem:
-  - *Kolor (czyszczenie)*: wybiela tło, usuwa cienie i zabrudzenia, a kolorowe elementy
-    (pieczątki, logo) zostają zachowane,
-  - *Odcienie szarości*,
-  - *Czarno-biały*: progowanie adaptacyjne i usuwanie pojedynczych kropek; najmniejsze pliki,
-    najlepszy do druku,
-  - *Oryginał*,
-  - przełącznik **Wyostrzanie** (maska nieostra).
-- **Zapis do PDF**: strony A4 (pionowe lub poziome), ok. 255 dpi, zwykle 150–600 kB na stronę.
-- **Lista dokumentów** z miniaturami: otwieranie, **drukowanie** (systemowe okno druku:
-  drukarki Wi-Fi/Mopria), **e-mail** (PDF jako załącznik), **udostępnianie**, zapis kopii
-  w dowolnym folderze (np. Pobrane, Dysk Google), zmiana nazwy, usuwanie.
+- **Własny skaner aparatem** (CameraX): na podglądzie na żywo widać zarys wykrytej kartki.
+  Można zrobić wiele zdjęć z rzędu albo dodać zdjęcia z galerii.
+- **Korekta kadru po każdym zdjęciu**: 4 przeciągane rogi i 4 punkty na środkach krawędzi
+  (do wyginania ramki przy zagiętej kartce), **lupa** z powiększeniem pod palcem, przyciski
+  „Wykryj”, „Całość” i „Obróć”. Do kadru można wrócić z podglądu przed zapisem.
+- **Prostowanie strony**: korekta perspektywy (homografia) i wygięć (płat Coonsa); proporcje
+  bliskie A4 są dociągane do A4; resztki blatu przy brzegach są automatycznie zamalowywane.
+- **Poprawa wyglądu** (`EnhancerCore.kt`): dwie siatki tła usuwają cienie, zażółcenie, plamy
+  oraz **cienie zagięć i zmięć**; tryby *Kolor*, *Odcienie szarości*, *Czarno-biały*,
+  *Oryginał*, przełącznik **Wyostrzanie**.
+- **Zapis do PDF**: strony A4, ok. 255 dpi, zwykle 150–600 kB na stronę.
+- **Lista dokumentów**: otwieranie, drukowanie, e-mail, udostępnianie, kopia w dowolnym
+  folderze, zmiana nazwy, usuwanie.
+
+Ograniczenie: drobne zmięcia wewnątrz kartki (przy prostych brzegach) są usuwane tylko
+jako cienie; sam tekst może pozostać lekko falisty.
 
 ## Wymagania
 
-- Android 8.0 (API 26) lub nowszy, z Usługami Google Play. Przy pierwszym skanowaniu Usługi
-  Google Play pobierają moduł skanera, więc potrzebny jest internet.
+- Android 8.0 (API 26) lub nowszy, z aparatem. Internet nie jest potrzebny.
 - Do budowania: **Android Studio** (Ladybug 2024.2 lub nowsze) z JDK 17.
 
 ## Najprościej: APK budowany przez GitHub (bez Android Studio)
@@ -63,9 +63,13 @@ Z wiersza poleceń (gdy zainstalowany jest Android SDK): `./gradlew assembleDebu
 | Plik | Rola |
 |---|---|
 | `MainActivity.kt` | lista PDF-ów, uruchamianie skanera, menu akcji |
+| `ScanActivity.kt` / `FrameOverlayView.kt` | aparat, wykrywanie kartki na żywo, import z galerii |
+| `CropActivity.kt` / `CropView.kt` | korekta kadru z lupą |
+| `PageGeometry.kt` | wykrywanie kartki, prostowanie perspektywy i wygięć, czyszczenie brzegów |
+| `ScanSession.kt` | strony w trakcie skanowania (zapisywane na dysku) |
 | `PreviewActivity.kt` / `PreviewViewModel.kt` | podgląd stron, wybór trybu, zapis z paskiem postępu |
 | `EnhancerCore.kt` | algorytmy poprawy obrazu (czysty Kotlin, bez zależności od Androida) |
-| `ImageEnhancer.kt` | dekodowanie i skalowanie zdjęć, konwersja Bitmap |
+| `PageProcessor.kt` | zapis zdjęć, obrót, renderowanie strony (prostowanie + poprawa) |
 | `PdfWriter.kt` | zapis PDF z osadzonymi JPEG-ami (małe pliki, strona po stronie) |
 | `ScanRepository.kt` | pliki w `files/scans/`, miniatury (PdfRenderer), nazwy |
 | `DocumentActions.kt` | otwieranie, drukowanie, e-mail, udostępnianie (FileProvider) |
