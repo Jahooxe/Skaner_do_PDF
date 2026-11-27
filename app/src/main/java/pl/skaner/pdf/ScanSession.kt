@@ -8,12 +8,17 @@ import org.json.JSONObject
 import java.io.File
 import java.util.UUID
 
+/** Poniżej tej pewności automatycznego wykrycia strona jest oznaczana „Sprawdź kadr”. */
+const val REVIEW_THRESHOLD = 0.63
+
 /**
  * Jedna strona w trakcie skanowania: oryginalne zdjęcie (pionowo, bez kadrowania)
  * i kadr znormalizowany do 0..1 względem tego zdjęcia.
  */
-data class ScanPage(val id: String, val path: String, val frame: PageFrame) {
+data class ScanPage(val id: String, val path: String, val frame: PageFrame, val confidence: Double = 1.0) {
     val file: File get() = File(path)
+    /** Automatyczny kadr niepewny – warto go sprawdzić. */
+    val needsReview: Boolean get() = confidence < REVIEW_THRESHOLD
     /** Klucz do pamięci podręcznej podglądów – zmienia się, gdy zmieni się kadr lub plik. */
     val key: String get() = "$id|$frame|${file.lastModified()}"
 }
@@ -43,7 +48,7 @@ object ScanSession {
             val arr = JSONArray(f.readText())
             _pages.value = List(arr.length()) {
                 val o = arr.getJSONObject(it)
-                ScanPage(o.getString("id"), o.getString("path"), PageFrame.fromString(o.getString("frame")))
+                ScanPage(o.getString("id"), o.getString("path"), PageFrame.fromString(o.getString("frame")), o.optDouble("conf", 1.0))
             }.filter { it.file.exists() }
         } catch (e: Exception) {
             _pages.value = emptyList()
@@ -74,7 +79,9 @@ object ScanSession {
     private fun commit(context: Context, list: List<ScanPage>) {
         _pages.value = list
         val arr = JSONArray()
-        list.forEach { arr.put(JSONObject().put("id", it.id).put("path", it.path).put("frame", it.frame.toString())) }
+        list.forEach {
+            arr.put(JSONObject().put("id", it.id).put("path", it.path).put("frame", it.frame.toString()).put("conf", it.confidence))
+        }
         indexFile(context).writeText(arr.toString())
     }
 }

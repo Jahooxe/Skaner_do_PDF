@@ -24,6 +24,20 @@
                 android:contentDescription="@null"
                 android:scaleType="fitCenter" />
 
+            <TextView
+                android:id="@+id/reviewLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="8dp"
+                android:background="@drawable/review_label"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="@string/check_crop"
+                android:textColor="#000000"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/pageLoading"
                 android:layout_width="wrap_content"

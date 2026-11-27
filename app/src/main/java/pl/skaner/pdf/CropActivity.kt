@@ -94,7 +94,8 @@ class CropActivity : AppCompatActivity() {
 
     private fun accept() {
         val f = currentNormalized() ?: return
-        ScanSession.update(this, page.copy(frame = f))
+        // kadr zatwierdzony przez użytkownika – nie wymaga już sprawdzenia
+        ScanSession.update(this, page.copy(frame = f, confidence = 1.0))
         setResult(Activity.RESULT_OK)
         finish()
     }

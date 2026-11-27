@@ -64,6 +64,9 @@ Zezwól na dostęp w ustawieniach telefonu albo dodaj zdjęcia z galerii.</strin
         <item quantity="other">Zeskanowane strony (%d) nie zostały zapisane i zostaną usunięte.</item>
     </plurals>
 
+    <string name="last_page">Ostatnia strona – stuknij, aby poprawić kadr</string>
+    <string name="check_crop">Sprawdź kadr</string>
+
     <!-- kadrowanie -->
     <string name="crop_title">Popraw kadr</string>
     <string name="crop_hint">Przeciągnij rogi. Kropki na środkach krawędzi wyginają brzeg (dla zagiętych kartek).</string>

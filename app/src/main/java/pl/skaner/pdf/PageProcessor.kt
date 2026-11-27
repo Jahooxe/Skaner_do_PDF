@@ -24,7 +24,8 @@ object PageProcessor {
     /** Dłuższy bok podglądu na ekranie. */
     const val PREVIEW_SIZE = 1200
 
-    private const val DETECT_SIZE = 800
+    /** Rozdzielczość wykrywania kartki (etap dokładny); etap zgrubny działa na ~800 px. */
+    private const val DETECT_SIZE = 1600
 
     /** Zdjęcie z aparatu → oryginał strony (obrócony pionowo) + wykryty kadr. */
     fun fromCamera(context: Context, photo: Bitmap, rotationDegrees: Int): ScanPage {
@@ -46,26 +47,24 @@ object PageProcessor {
     private fun store(context: Context, bmp: Bitmap): ScanPage {
         val file = ScanSession.newImageFile(context)
         FileOutputStream(file).use { bmp.compress(Bitmap.CompressFormat.JPEG, 95, it) }
-        val frame = detect(bmp)
+        val d = detectWithConfidence(bmp)
         bmp.recycle()
-        return ScanPage(UUID.randomUUID().toString(), file.absolutePath, frame)
+        return ScanPage(UUID.randomUUID().toString(), file.absolutePath, d.first, d.second)
     }
 
-    /** Automatyczne wykrycie kartki; zwraca kadr znormalizowany (0..1) albo całe zdjęcie. */
-    fun detect(bmp: Bitmap): PageFrame {
+    /** Automatyczne wykrycie kartki: kadr znormalizowany (0..1) i pewność; w razie braku – całe zdjęcie, pewność 0. */
+    fun detectWithConfidence(bmp: Bitmap): Pair<PageFrame, Double> {
         val s = DETECT_SIZE.toFloat() / max(bmp.width, bmp.height)
         val small = if (s < 1f) Bitmap.createScaledBitmap(bmp, (bmp.width * s).roundToInt(), (bmp.height * s).roundToInt(), true) else bmp
         val w = small.width; val h = small.height
         val px = IntArray(w * h)
         small.getPixels(px, 0, w, 0, 0, w, h)
         if (small !== bmp) small.recycle()
-        return PageDetector.detect(px, w, h)?.scaled(1f / w, 1f / h) ?: PageFrame.full(1f, 1f)
+        val d = PageDetector.detect(px, w, h) ?: return PageFrame.full(1f, 1f) to 0.0
+        return d.frame.scaled(1f / w, 1f / h) to d.confidence
     }
 
-    fun detect(page: ScanPage): PageFrame {
-        val bmp = decodeFile(page.file, DETECT_SIZE)
-        return detect(bmp).also { bmp.recycle() }
-    }
+    fun detect(bmp: Bitmap): PageFrame = detectWithConfidence(bmp).first
 
     /** Obraca oryginał strony o 90° w prawo (razem z kadrem). */
     fun rotate(page: ScanPage): ScanPage {

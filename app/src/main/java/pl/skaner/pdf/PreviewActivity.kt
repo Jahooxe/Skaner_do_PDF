@@ -157,6 +157,8 @@ class PreviewActivity : AppCompatActivity() {
                     pageLoading.isVisible = true
                 }
                 pageNumber.text = root.context.getString(R.string.page_n, position + 1, items.size)
+                reviewLabel.isVisible = item.page.needsReview
+                reviewLabel.setOnClickListener { onCrop(item.page) }
                 cropButton.setOnClickListener { onCrop(item.page) }
                 rotateButton.setOnClickListener { onRotate(item.page) }
                 deleteButton.setOnClickListener { onDelete(item.page) }

@@ -69,10 +69,7 @@ class ScanActivity : AppCompatActivity() {
             added.forEach { ScanSession.add(this@ScanActivity, it) }
             setBusy(false)
             if (failed > 0) toast(getString(R.string.import_failed, failed))
-            when {
-                added.size == 1 -> cropLauncher.launch(CropActivity.intent(this@ScanActivity, added[0].id, isNew = false))
-                added.size > 1 -> openPreview()
-            }
+            if (added.isNotEmpty()) openPreview()
         }
     }
 
@@ -113,11 +110,18 @@ class ScanActivity : AppCompatActivity() {
             }
         })
 
+        binding.lastThumb.setOnClickListener {
+            ScanSession.pages.value.lastOrNull()?.let {
+                cropLauncher.launch(CropActivity.intent(this, it.id, isNew = false))
+            }
+        }
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ScanSession.pages.collect { pages ->
                     binding.doneButton.isVisible = pages.isNotEmpty()
                     binding.doneButton.text = getString(R.string.next_with_count, pages.size)
+                    updateThumb(pages.lastOrNull())
                 }
             }
         }
@@ -207,8 +211,9 @@ class ScanActivity : AppCompatActivity() {
                     if (page == null) {
                         toast(getString(R.string.capture_failed))
                     } else {
+                        // w pełni automatycznie: bez ekranu korekty; miniatura pozwala poprawić w razie potrzeby
                         ScanSession.add(this@ScanActivity, page)
-                        cropLauncher.launch(CropActivity.intent(this@ScanActivity, page.id, isNew = true))
+                        flash()
                     }
                 }
             }
@@ -220,6 +225,29 @@ class ScanActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private var thumbKey: String? = null
+
+    /** Miniatura ostatniej strony (już wykadrowanej i wyprostowanej) z ewentualnym ostrzeżeniem. */
+    private fun updateThumb(page: ScanPage?) {
+        binding.thumbBox.isVisible = page != null
+        binding.reviewBadge.isVisible = page?.needsReview == true
+        if (page == null || page.key == thumbKey) return
+        thumbKey = page.key
+        lifecycleScope.launch {
+            val bmp = withContext(Dispatchers.Default) {
+                try { PageProcessor.render(page, 320, EnhanceMode.ORIGINAL, false) } catch (e: Throwable) { null }
+            }
+            if (thumbKey == page.key) binding.lastThumb.setImageBitmap(bmp)
+        }
+    }
+
+    /** Krótki błysk po zrobieniu zdjęcia. */
+    private fun flash() {
+        binding.flashView.alpha = 0.8f
+        binding.flashView.isVisible = true
+        binding.flashView.animate().alpha(0f).setDuration(250).withEndAction { binding.flashView.isVisible = false }.start()
     }
 
     private fun openPreview() {
