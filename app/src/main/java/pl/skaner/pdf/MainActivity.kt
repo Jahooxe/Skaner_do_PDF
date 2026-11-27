@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.View
 import android.widget.PopupMenu
 import android.widget.Toast
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
@@ -17,9 +16,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,27 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: ScanAdapter
     private var pendingExport: File? = null
 
-    /** Skaner ML Kit: podgląd z aparatu, auto-wykrywanie krawędzi, kadrowanie, obrót, filtry. */
-    private val scanner by lazy {
-        val options = GmsDocumentScannerOptions.Builder()
-            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
-            .setGalleryImportAllowed(true)
-            .setPageLimit(50)
-            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
-            .build()
-        GmsDocumentScanning.getClient(options)
-    }
-
     private val scanLauncher = registerForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
-        val scan = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
-        val uris = scan?.pages?.map { it.imageUri }.orEmpty()
-        if (uris.isNotEmpty()) previewLauncher.launch(PreviewActivity.intent(this, uris))
-    }
-
-    private val previewLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         val path = result.data?.getStringExtra(PreviewActivity.RESULT_PATH)
@@ -113,17 +89,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startScan() {
-        scanner.getStartScanIntent(this)
-            .addOnSuccessListener { sender ->
-                scanLauncher.launch(IntentSenderRequest.Builder(sender).build())
-            }
-            .addOnFailureListener { e ->
-                MaterialAlertDialogBuilder(this)
-                    .setTitle(R.string.scanner_error_title)
-                    .setMessage(getString(R.string.scanner_error_msg, e.localizedMessage ?: ""))
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show()
-            }
+        scanLauncher.launch(ScanActivity.intent(this))
     }
 
     private fun refresh() {

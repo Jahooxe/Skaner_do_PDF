@@ -4,4 +4,11 @@
     <style name="Theme.SkanerPDF" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand</item>
     </style>
+
+    <!-- Ciemny motyw dla aparatu i edycji kadru. -->
+    <style name="Theme.SkanerPDF.Dark" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#4FC3F7</item>
+        <item name="colorOnPrimary">#00344A</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
 </resources>

@@ -24,8 +24,6 @@
     <string name="share_title">Udostępnij PDF</string>
     <string name="email_body">W załączniku przesyłam zeskanowany dokument.</string>
 
-    <string name="scanner_error_title">Skaner niedostępny</string>
-    <string name="scanner_error_msg">Nie udało się uruchomić skanera. Sprawdź, czy Usługi Google Play są aktualne i czy jest połączenie z internetem (przy pierwszym uruchomieniu pobierany jest moduł skanera).\n\n%1$s</string>
 
     <string name="preview_title">Podgląd skanu</string>
     <string name="file_name">Nazwa pliku</string>
@@ -45,4 +43,39 @@
         <item quantity="many">%d stron</item>
         <item quantity="other">%d strony</item>
     </plurals>
+
+    <!-- aparat -->
+    <string name="camera_hint">Połóż kartkę na ciemnym tle</string>
+    <string name="close">Zamknij</string>
+    <string name="torch">Latarka</string>
+    <string name="gallery">Z galerii</string>
+    <string name="take_photo">Zrób zdjęcie</string>
+    <string name="next_with_count">Dalej (%1$d)</string>
+    <string name="no_camera_permission">Aplikacja nie ma dostępu do aparatu.
+Zezwól na dostęp w ustawieniach telefonu albo dodaj zdjęcia z galerii.</string>
+    <string name="capture_failed">Nie udało się zrobić zdjęcia. Spróbuj ponownie.</string>
+    <string name="import_failed">Nie udało się wczytać obrazów: %1$d</string>
+    <string name="discard_title">Odrzucić skan?</string>
+    <string name="discard">Odrzuć</string>
+    <plurals name="discard_msg">
+        <item quantity="one">Zeskanowana strona (%d) nie została zapisana i zostanie usunięta.</item>
+        <item quantity="few">Zeskanowane strony (%d) nie zostały zapisane i zostaną usunięte.</item>
+        <item quantity="many">Zeskanowane strony (%d) nie zostały zapisane i zostaną usunięte.</item>
+        <item quantity="other">Zeskanowane strony (%d) nie zostały zapisane i zostaną usunięte.</item>
+    </plurals>
+
+    <!-- kadrowanie -->
+    <string name="crop_title">Popraw kadr</string>
+    <string name="crop_hint">Przeciągnij rogi. Kropki na środkach krawędzi wyginają brzeg (dla zagiętych kartek).</string>
+    <string name="detect">Wykryj</string>
+    <string name="full_page">Całość</string>
+    <string name="rotate">Obróć</string>
+    <string name="retake">Powtórz zdjęcie</string>
+    <string name="accept">Zatwierdź</string>
+    <string name="rotate_failed">Nie udało się obrócić strony.</string>
+
+    <!-- podgląd -->
+    <string name="crop">Kadruj</string>
+    <string name="add_pages">Dodaj</string>
+    <string name="delete_page_title">Usunąć tę stronę?</string>
 </resources>

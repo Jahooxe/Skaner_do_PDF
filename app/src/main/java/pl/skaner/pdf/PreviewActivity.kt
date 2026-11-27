@@ -1,16 +1,12 @@
 package pl.skaner.pdf
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.IntentCompat
 import androidx.core.view.children
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -24,12 +20,15 @@ import kotlinx.coroutines.launch
 import pl.skaner.pdf.databinding.ActivityPreviewBinding
 import pl.skaner.pdf.databinding.ItemPageBinding
 
-/** Podgląd zeskanowanych stron: wybór trybu poprawy, wyostrzanie, nazwa pliku i zapis do PDF. */
+/**
+ * Podgląd zeskanowanych stron: tryb poprawy, wyostrzanie, kadrowanie/obrót/usuwanie stron,
+ * dodawanie kolejnych stron i zapis do PDF.
+ */
 class PreviewActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPreviewBinding
     private val vm: PreviewViewModel by viewModels()
-    private val pageAdapter = PageAdapter()
+    private lateinit var pageAdapter: PageAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -39,11 +38,18 @@ class PreviewActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val uris = IntentCompat.getParcelableArrayListExtra(intent, EXTRA_PAGES, Uri::class.java).orEmpty()
-        if (uris.isEmpty()) { finish(); return }
-        vm.init(uris)
-
         if (savedInstanceState == null) binding.nameInput.setText(ScanRepository.defaultName())
+        pageAdapter = PageAdapter(
+            onCrop = { startActivity(CropActivity.intent(this, it.id, isNew = false)) },
+            onRotate = { vm.rotate(it) },
+            onDelete = { page ->
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.delete_page_title)
+                    .setPositiveButton(R.string.action_delete) { _, _ -> vm.delete(page) }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+        )
         binding.pageList.layoutManager = LinearLayoutManager(this)
         binding.pageList.adapter = pageAdapter
 
@@ -59,22 +65,30 @@ class PreviewActivity : AppCompatActivity() {
         binding.sharpenSwitch.isChecked = vm.sharpen.value
         binding.sharpenSwitch.setOnCheckedChangeListener { _, checked -> vm.sharpen.value = checked }
         binding.saveButton.setOnClickListener { vm.save(binding.nameInput.text?.toString().orEmpty()) }
+        binding.addButton.setOnClickListener { finish() } // powrót do aparatu
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { vm.previews.collect { pageAdapter.submit(it) } }
+                launch {
+                    vm.items.collect { items ->
+                        pageAdapter.submit(items)
+                        if (ScanSession.pages.value.isEmpty() && vm.saveProgress.value == null) finish()
+                    }
+                }
                 launch { vm.busy.collect { binding.busy.isVisible = it } }
                 launch {
                     vm.saveProgress.collect { done ->
                         val saving = done != null
+                        val total = ScanSession.pages.value.size
                         binding.saveProgress.isVisible = saving
                         binding.saveButton.isEnabled = !saving
+                        binding.addButton.isEnabled = !saving
                         binding.modeGroup.children.forEach { it.isEnabled = !saving }
                         binding.sharpenSwitch.isEnabled = !saving
-                        if (saving) {
-                            binding.saveProgress.max = vm.pages.size
-                            binding.saveProgress.setProgressCompat(done!!, true)
-                            binding.saveButton.text = getString(R.string.saving_page, done, vm.pages.size)
+                        if (done != null) {
+                            binding.saveProgress.max = maxOf(1, total)
+                            binding.saveProgress.setProgressCompat(done, true)
+                            binding.saveButton.text = getString(R.string.saving_page, done, total)
                         } else {
                             binding.saveButton.setText(R.string.save_pdf)
                         }
@@ -111,10 +125,14 @@ class PreviewActivity : AppCompatActivity() {
         EnhanceMode.BLACK_WHITE -> R.id.chipBw
     }
 
-    private class PageAdapter : RecyclerView.Adapter<PageAdapter.Holder>() {
-        private var items: List<Bitmap> = emptyList()
+    private class PageAdapter(
+        private val onCrop: (ScanPage) -> Unit,
+        private val onRotate: (ScanPage) -> Unit,
+        private val onDelete: (ScanPage) -> Unit
+    ) : RecyclerView.Adapter<PageAdapter.Holder>() {
+        private var items: List<PreviewItem> = emptyList()
 
-        fun submit(list: List<Bitmap>) {
+        fun submit(list: List<PreviewItem>) {
             items = list
             notifyDataSetChanged()
         }
@@ -127,17 +145,26 @@ class PreviewActivity : AppCompatActivity() {
         override fun getItemCount() = items.size
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
-            holder.b.pageImage.setImageBitmap(items[position])
-            holder.b.pageNumber.text = holder.itemView.context.getString(R.string.page_n, position + 1, items.size)
+            val item = items[position]
+            with(holder.b) {
+                if (item.bitmap != null) {
+                    pageImage.setImageBitmap(item.bitmap)
+                    pageImage.minimumHeight = 0
+                    pageLoading.isVisible = false
+                } else {
+                    pageImage.setImageDrawable(null)
+                    pageImage.minimumHeight = (300 * root.resources.displayMetrics.density).toInt()
+                    pageLoading.isVisible = true
+                }
+                pageNumber.text = root.context.getString(R.string.page_n, position + 1, items.size)
+                cropButton.setOnClickListener { onCrop(item.page) }
+                rotateButton.setOnClickListener { onRotate(item.page) }
+                deleteButton.setOnClickListener { onDelete(item.page) }
+            }
         }
     }
 
     companion object {
-        private const val EXTRA_PAGES = "pages"
         const val RESULT_PATH = "result_path"
-
-        fun intent(context: Context, pages: List<Uri>): Intent =
-            Intent(context, PreviewActivity::class.java)
-                .putParcelableArrayListExtra(EXTRA_PAGES, ArrayList(pages))
     }
 }

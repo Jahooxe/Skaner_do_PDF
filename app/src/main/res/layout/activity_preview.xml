@@ -97,8 +97,10 @@
             android:id="@+id/busy"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:indeterminate="true" />
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="8dp"
+            android:indeterminate="true"
+            android:visibility="gone" />
     </FrameLayout>
 
     <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -107,11 +109,27 @@
         android:layout_height="wrap_content"
         android:visibility="gone" />
 
-    <Button
-        android:id="@+id/saveButton"
-        style="@style/Widget.Material3.Button"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="@string/save_pdf" />
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/addButton"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:text="@string/add_pages"
+            app:icon="@drawable/ic_add" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/saveButton"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/save_pdf" />
+    </LinearLayout>
 </LinearLayout>

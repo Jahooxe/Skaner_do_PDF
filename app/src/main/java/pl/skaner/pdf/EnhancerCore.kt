@@ -54,8 +54,37 @@ object EnhancerCore {
 
     // ---------------------------------------------------------------- tło
 
+    private class Grid(val block: Int, val gw: Int, val gh: Int, val ch: Array<IntArray>)
+
+    /**
+     * Normalizacja tła dwiema siatkami:
+     * - zgrubna (duże bloki, mocno wygładzona) – cień, gradient światła, zażółcenie,
+     * - drobna (małe bloki) – wąskie cienie zagięć i zmięć; ograniczona do 60–108% zgrubnej,
+     *   żeby nie „wypalać” dużych ciemnych elementów (zdjęć, pogrubionych nagłówków).
+     */
     private fun normalizeBackground(px: IntArray, w: Int, h: Int) {
-        val block = max(8, max(w, h) / 120)
+        val coarse = buildGrid(px, w, h, max(8, max(w, h) / 120), dilateR = 1, blurR = 2, blurPasses = 2)
+        val fine = buildGrid(px, w, h, max(4, max(w, h) / 220), dilateR = 0, blurR = 1, blurPasses = 1)
+        val ci = Interp(coarse, w); val fi = Interp(fine, w)
+        val cb = IntArray(3); val fb = IntArray(3)
+        for (y in 0 until h) {
+            ci.row(y); fi.row(y)
+            val row = y * w
+            for (x in 0 until w) {
+                ci.sample(x, cb); fi.sample(x, fb)
+                val p = px[row + x]
+                var out = 0xFF shl 24
+                for (k in 0 until 3) {
+                    val bg = fb[k].coerceIn(cb[k] * 60 / 100, cb[k] * 108 / 100).coerceAtLeast(1)
+                    val shift = 16 - 8 * k
+                    out = out or (min(255, ((p shr shift) and 0xFF) * 255 / bg) shl shift)
+                }
+                px[row + x] = out
+            }
+        }
+    }
+
+    private fun buildGrid(px: IntArray, w: Int, h: Int, block: Int, dilateR: Int, blurR: Int, blurPasses: Int): Grid {
         val gw = (w + block - 1) / block
         val gh = (h + block - 1) / block
         val n = gw * gh
@@ -84,36 +113,39 @@ object EnhancerCore {
         }
 
         fillContentBlocks(gr, gg, gb, gw, gh)
+        val tmp = IntArray(n); val out = IntArray(n)
         for (ch in arrayOf(gr, gg, gb)) {
-            dilate(ch, gw, gh)
-            val tmp = IntArray(n); val out = IntArray(n)
-            boxBlur(ch, out, tmp, gw, gh, 2); boxBlur(out, ch, tmp, gw, gh, 2)
+            repeat(dilateR) { dilate(ch, gw, gh) }
+            repeat(blurPasses) { boxBlur(ch, out, tmp, gw, gh, blurR); out.copyInto(ch) }
             for (i in 0 until n) if (ch[i] < 90) ch[i] = 90
         }
+        return Grid(block, gw, gh, arrayOf(gr, gg, gb))
+    }
 
-        // współczynniki interpolacji dwuliniowej (stałoprzecinkowo, 0..256)
-        val xi0 = IntArray(w); val xi1 = IntArray(w); val xw = IntArray(w)
-        for (x in 0 until w) {
-            val f = ((x + 0.5) / block - 0.5).coerceIn(0.0, (gw - 1).toDouble())
-            xi0[x] = f.toInt(); xi1[x] = min(xi0[x] + 1, gw - 1); xw[x] = ((f - xi0[x]) * 256).toInt()
-        }
-        for (y in 0 until h) {
-            val f = ((y + 0.5) / block - 0.5).coerceIn(0.0, (gh - 1).toDouble())
-            val r0 = f.toInt() * gw; val r1 = min(f.toInt() + 1, gh - 1) * gw
-            val wy = ((f - f.toInt()) * 256).toInt()
-            val row = y * w
+    /** Interpolacja dwuliniowa siatki do pełnej rozdzielczości (stałoprzecinkowo). */
+    private class Interp(private val g: Grid, w: Int) {
+        private val xi0 = IntArray(w); private val xi1 = IntArray(w); private val xw = IntArray(w)
+        private var r0 = 0; private var r1 = 0; private var wy = 0
+
+        init {
             for (x in 0 until w) {
-                val a = r0 + xi0[x]; val b = r0 + xi1[x]; val c = r1 + xi0[x]; val d = r1 + xi1[x]
-                val wx = xw[x]
-                val bgR = bilerp(gr[a], gr[b], gr[c], gr[d], wx, wy)
-                val bgG = bilerp(gg[a], gg[b], gg[c], gg[d], wx, wy)
-                val bgB = bilerp(gb[a], gb[b], gb[c], gb[d], wx, wy)
-                val p = px[row + x]
-                px[row + x] = rgb(
-                    min(255, ((p shr 16) and 0xFF) * 255 / bgR),
-                    min(255, ((p shr 8) and 0xFF) * 255 / bgG),
-                    min(255, (p and 0xFF) * 255 / bgB)
-                )
+                val f = ((x + 0.5) / g.block - 0.5).coerceIn(0.0, (g.gw - 1).toDouble())
+                xi0[x] = f.toInt(); xi1[x] = min(xi0[x] + 1, g.gw - 1); xw[x] = ((f - xi0[x]) * 256).toInt()
+            }
+        }
+
+        fun row(y: Int) {
+            val f = ((y + 0.5) / g.block - 0.5).coerceIn(0.0, (g.gh - 1).toDouble())
+            r0 = f.toInt() * g.gw; r1 = min(f.toInt() + 1, g.gh - 1) * g.gw
+            wy = ((f - f.toInt()) * 256).toInt()
+        }
+
+        fun sample(x: Int, out: IntArray) {
+            val a = r0 + xi0[x]; val b = r0 + xi1[x]; val c = r1 + xi0[x]; val d = r1 + xi1[x]
+            val wx = xw[x]
+            for (k in 0 until 3) {
+                val ch = g.ch[k]
+                out[k] = bilerp(ch[a], ch[b], ch[c], ch[d], wx, wy)
             }
         }
     }

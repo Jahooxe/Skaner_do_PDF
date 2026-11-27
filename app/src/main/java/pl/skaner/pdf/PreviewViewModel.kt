@@ -2,7 +2,6 @@ package pl.skaner.pdf
 
 import android.app.Application
 import android.graphics.Bitmap
-import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -18,15 +17,18 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 
+/** Pozycja podglądu: strona i (gdy gotowy) jej przetworzony obraz. */
+data class PreviewItem(val page: ScanPage, val bitmap: Bitmap?)
+
 class PreviewViewModel(app: Application) : AndroidViewModel(app) {
 
     val mode = MutableStateFlow(EnhanceMode.COLOR)
     val sharpen = MutableStateFlow(true)
 
-    private val _previews = MutableStateFlow<List<Bitmap>>(emptyList())
-    val previews: StateFlow<List<Bitmap>> = _previews
+    private val _items = MutableStateFlow<List<PreviewItem>>(emptyList())
+    val items: StateFlow<List<PreviewItem>> = _items
 
-    private val _busy = MutableStateFlow(true)
+    private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy
 
     /** Postęp zapisu: liczba gotowych stron albo null, gdy nic nie jest zapisywane. */
@@ -39,38 +41,52 @@ class PreviewViewModel(app: Application) : AndroidViewModel(app) {
     private val _error = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val error: SharedFlow<String> = _error
 
-    var pages: List<Uri> = emptyList()
-        private set
-    private var sources: List<Bitmap> = emptyList()
+    /** Pamięć podręczna podglądów: klucz strony + tryb → obraz. */
+    private val cache = HashMap<String, Bitmap>()
 
-    fun init(uris: List<Uri>) {
-        if (pages.isNotEmpty()) return
-        pages = uris
+    init {
+        ScanSession.load(app)
         viewModelScope.launch {
-            try {
-                sources = withContext(Dispatchers.IO) {
-                    uris.map { ImageEnhancer.decode(getApplication(), it, ImageEnhancer.PREVIEW_SIZE) }
-                }
-            } catch (e: Exception) {
-                _error.emit(e.localizedMessage ?: e.toString())
-                return@launch
-            }
-            // przelicz podgląd przy każdej zmianie trybu lub wyostrzania
-            combine(mode, sharpen) { m, s -> m to s }.collectLatest { (m, s) ->
+            combine(ScanSession.pages, mode, sharpen) { p, m, s -> Triple(p, m, s) }.collectLatest { (pages, m, s) ->
+                val suffix = "|$m|$s"
+                // od razu pokaż to, co już jest policzone
+                _items.value = pages.map { PreviewItem(it, cache[it.key + suffix]) }
                 _busy.value = true
-                val result = withContext(Dispatchers.Default) {
-                    sources.map { src ->
-                        ensureActive()
-                        ImageEnhancer.enhance(src, m, s)
-                    }
+                for (page in pages) {
+                    val k = page.key + suffix
+                    if (cache[k] != null) continue
+                    val bmp = try {
+                        withContext(Dispatchers.Default) {
+                            ensureActive()
+                            PageProcessor.render(page, PageProcessor.PREVIEW_SIZE, m, s)
+                        }
+                    } catch (e: OutOfMemoryError) { null }
+                    if (bmp != null) cache[k] = bmp
+                    _items.value = pages.map { PreviewItem(it, cache[it.key + suffix]) }
                 }
-                _previews.value = result
+                // usuń z pamięci podglądy nieużywanych wersji
+                val keep = pages.map { it.key + suffix }.toSet()
+                cache.keys.retainAll(keep)
                 _busy.value = false
             }
         }
     }
 
+    fun rotate(page: ScanPage) {
+        viewModelScope.launch {
+            try {
+                val rotated = withContext(Dispatchers.Default) { PageProcessor.rotate(page) }
+                ScanSession.update(getApplication(), rotated)
+            } catch (e: Throwable) {
+                _error.emit(e.localizedMessage ?: e.toString())
+            }
+        }
+    }
+
+    fun delete(page: ScanPage) = ScanSession.remove(getApplication(), page.id)
+
     fun save(name: String) {
+        val pages = ScanSession.pages.value
         if (_saveProgress.value != null || pages.isEmpty()) return
         val m = mode.value
         val s = sharpen.value
@@ -80,10 +96,8 @@ class PreviewViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 withContext(Dispatchers.Default) {
                     PdfWriter(out).use { pdf ->
-                        pages.forEachIndexed { i, uri ->
-                            val src = ImageEnhancer.decode(getApplication(), uri, ImageEnhancer.FULL_SIZE)
-                            val img = ImageEnhancer.enhance(src, m, s)
-                            src.recycle()
+                        pages.forEachIndexed { i, page ->
+                            val img = PageProcessor.render(page, PageProcessor.FULL_SIZE, m, s)
                             val jpeg = ByteArrayOutputStream().use { bos ->
                                 img.compress(Bitmap.CompressFormat.JPEG, if (m == EnhanceMode.BLACK_WHITE) 90 else 85, bos)
                                 bos.toByteArray()
@@ -94,6 +108,7 @@ class PreviewViewModel(app: Application) : AndroidViewModel(app) {
                         }
                     }
                 }
+                ScanSession.clear(getApplication())
                 _saved.emit(out)
             } catch (e: Throwable) {
                 out.delete()
