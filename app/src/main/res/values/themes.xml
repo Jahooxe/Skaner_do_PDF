@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Na Androidzie 12+ kolory dopasowują się do tapety (Material You). -->
+    <style name="Theme.SkanerPDF" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand</item>
+    </style>
+</resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Skaner PDF</string>
+
+    <string name="scan">Skanuj</string>
+    <string name="empty_list">Brak zapisanych skanów.\nNaciśnij „Skanuj”, aby zeskanować dokument aparatem.</string>
+    <string name="saved_as">Zapisano: %1$s</string>
+
+    <string name="action_open">Otwórz</string>
+    <string name="action_print">Drukuj</string>
+    <string name="action_email">E-mail</string>
+    <string name="action_share">Udostępnij</string>
+    <string name="action_export">Zapisz kopię w…</string>
+    <string name="action_rename">Zmień nazwę</string>
+    <string name="action_delete">Usuń</string>
+    <string name="more_options">Więcej opcji</string>
+
+    <string name="delete_title">Usunąć dokument?</string>
+    <string name="delete_msg">Plik „%1$s” zostanie trwale usunięty.</string>
+    <string name="rename_failed">Nie udało się zmienić nazwy (nazwa pusta lub już zajęta).</string>
+    <string name="export_ok">Zapisano kopię pliku.</string>
+    <string name="export_failed">Nie udało się zapisać kopii.</string>
+    <string name="no_pdf_viewer">Brak aplikacji do otwierania plików PDF.</string>
+    <string name="share_title">Udostępnij PDF</string>
+    <string name="email_body">W załączniku przesyłam zeskanowany dokument.</string>
+
+    <string name="scanner_error_title">Skaner niedostępny</string>
+    <string name="scanner_error_msg">Nie udało się uruchomić skanera. Sprawdź, czy Usługi Google Play są aktualne i czy jest połączenie z internetem (przy pierwszym uruchomieniu pobierany jest moduł skanera).\n\n%1$s</string>
+
+    <string name="preview_title">Podgląd skanu</string>
+    <string name="file_name">Nazwa pliku</string>
+    <string name="mode_original">Oryginał</string>
+    <string name="mode_color">Kolor (czyszczenie)</string>
+    <string name="mode_gray">Odcienie szarości</string>
+    <string name="mode_bw">Czarno-biały</string>
+    <string name="sharpen">Wyostrzanie</string>
+    <string name="save_pdf">Zapisz PDF</string>
+    <string name="saving_page">Zapisywanie strony %1$d z %2$d…</string>
+    <string name="page_n">Strona %1$d z %2$d</string>
+    <string name="error_title">Błąd</string>
+
+    <plurals name="pages">
+        <item quantity="one">%d strona</item>
+        <item quantity="few">%d strony</item>
+        <item quantity="many">%d stron</item>
+        <item quantity="other">%d strony</item>
+    </plurals>
+</resources>
